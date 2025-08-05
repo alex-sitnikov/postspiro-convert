@@ -1,0 +1,14 @@
+{
+  "name": "spiroui",
+  "version": "1.0.0",
+  "description": "Spirograph file parser UI",
+  "scripts": {
+    "css:build": "npx tailwindcss -i ./wwwroot/css/app.css -o ./wwwroot/css/output.css --watch",
+    "css:prod": "npx tailwindcss -i ./wwwroot/css/app.css -o ./wwwroot/css/output.css --minify"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.0",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.32"
+  }
+}

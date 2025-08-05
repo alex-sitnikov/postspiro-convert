@@ -1,0 +1,306 @@
+@page "/"
+@inject IJSRuntime JS
+@inject FileProcessingService FileService
+
+<PageTitle>POSTSPIRO File Parser</PageTitle>
+
+<div class="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50">
+    <!-- Header -->
+    <div class="container mx-auto px-4 py-8">
+        <div class="text-center mb-12">
+            <h1 class="text-5xl font-bold bg-gradient-to-r from-spiro-primary to-spiro-secondary bg-clip-text text-transparent mb-4">
+                POSTSPIRO File Parser
+            </h1>
+            <p class="text-gray-600 text-lg">
+                POSTSPIRO .pnp => .json converter
+            </p>
+        </div>
+
+        <!-- Upload Area -->
+        <div class="max-w-4xl mx-auto">
+            <div @ondragenter="HandleDragEnter"
+                 @ondragleave="HandleDragLeave"
+                 @ondragover="HandleDragOver"
+                 @ondragover:preventDefault="true"
+                 @ondrop="HandleDrop"
+                 @ondrop:preventDefault="true"
+                 class="@GetDropZoneClass()">
+                
+                <div class="text-center">
+                    <svg class="mx-auto h-16 w-16 @(isDragging ? "text-spiro-primary animate-pulse" : "text-gray-400")" 
+                         stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" 
+                              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    
+                    <p class="mt-4 text-lg text-gray-600">
+                        @if (isDragging)
+                        {
+                            <span class="text-spiro-primary font-semibold">Drop your files here!</span>
+                        }
+                        else
+                        {
+                            <span>Drag and drop your POSTSPIRO files here, or</span>
+                        }
+                    </p>
+                    
+                    <InputFile id="fileInput" OnChange="HandleFileSelected" multiple class="hidden" accept=".pnp" />
+                    <label for="fileInput" 
+                           class="mt-4 inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-gradient-to-r from-spiro-primary to-spiro-secondary hover:from-spiro-secondary hover:to-spiro-primary transition-all duration-200 cursor-pointer shadow-lg hover:shadow-xl transform hover:scale-105">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        Browse Files
+                    </label>
+                    
+                    <p class="mt-2 text-sm text-gray-500">
+                        Supports .pnp files
+                    </p>
+                </div>
+            </div>
+
+            <!-- File List -->
+            @if (files.Any())
+            {
+                <div class="mt-8 space-y-3">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800">Files (@files.Count)</h3>
+                        <button @onclick="ClearAll" 
+                                class="text-sm text-red-600 hover:text-red-700 font-medium transition-colors">
+                            Clear All
+                        </button>
+                    </div>
+                    
+                    @foreach (var file in files)
+                    {
+                        <div class="bg-white rounded-lg shadow-md p-4 transform transition-all hover:scale-102 hover:shadow-lg">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <div class="flex-shrink-0">
+                                        @if (file.Status == ProcessingStatus.Processing)
+                                        {
+                                            <div class="animate-spin h-8 w-8 text-spiro-primary">
+                                                <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                            </div>
+                                        }
+                                        else if (file.Status == ProcessingStatus.Completed)
+                                        {
+                                            <svg class="h-8 w-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        }
+                                        else if (file.Status == ProcessingStatus.Error)
+                                        {
+                                            <svg class="h-8 w-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        }
+                                        else
+                                        {
+                                            <svg class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        }
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">@file.Name</p>
+                                        <p class="text-sm text-gray-500">@FormatFileSize(file.Size)</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-4">
+                                    @if (file.Status == ProcessingStatus.Processing)
+                                    {
+                                        <span class="text-sm text-spiro-primary font-medium">Processing...</span>
+                                    }
+                                    else if (file.Status == ProcessingStatus.Completed)
+                                    {
+                                        <span class="text-sm text-green-600 font-medium">Completed</span>
+                                    }
+                                    else if (file.Status == ProcessingStatus.Error)
+                                    {
+                                        <span class="text-sm text-red-600 font-medium">Error</span>
+                                    }
+                                    
+                                    <button @onclick="() => RemoveFile(file)" 
+                                            class="text-gray-400 hover:text-red-600 transition-colors">
+                                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            @if (!string.IsNullOrEmpty(file.ErrorMessage))
+                            {
+                                <div class="mt-2 text-sm text-red-600 bg-red-50 rounded p-2">
+                                    @file.ErrorMessage
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <!-- Download Button -->
+                @if (files.Any(f => f.Status == ProcessingStatus.Completed))
+                {
+                    <div class="mt-8 text-center">
+                        <button @onclick="DownloadZip" 
+                                disabled="@isGeneratingZip"
+                                class="inline-flex items-center px-8 py-4 border border-transparent text-lg font-medium rounded-lg text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
+                            @if (isGeneratingZip)
+                            {
+                                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span>Generating ZIP...</span>
+                            }
+                            else
+                            {
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <span>Download Parsed</span>
+                            }
+                        </button>
+                        <p class="mt-2 text-sm text-gray-500">
+                            @files.Count(f => f.Status == ProcessingStatus.Completed) files ready for download
+                        </p>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<SpirographFile> files = new();
+    private bool isDragging = false;
+    private bool isGeneratingZip = false;
+
+    private void HandleDragEnter()
+    {
+        isDragging = true;
+    }
+
+    private void HandleDragLeave()
+    {
+        isDragging = false;
+    }
+
+    private void HandleDragOver(DragEventArgs e)
+    {
+        e.DataTransfer.DropEffect = "copy";
+    }
+
+    private async Task HandleDrop(DragEventArgs e)
+    {
+        isDragging = false;
+        // File handling will be implemented with JS interop
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        foreach (var file in e.GetMultipleFiles())
+        {
+            var spirographFile = new SpirographFile
+            {
+                Name = file.Name,
+                Size = file.Size,
+                BrowserFile = file,
+                Status = ProcessingStatus.Pending
+            };
+
+            files.Add(spirographFile);
+            StateHasChanged();
+
+            // Process file asynchronously
+            _ = Task.Run(async () => await ProcessFile(spirographFile));
+        }
+    }
+
+    private async Task ProcessFile(SpirographFile file)
+    {
+        try
+        {
+            file.Status = ProcessingStatus.Processing;
+            await InvokeAsync(StateHasChanged);
+
+            // Read file content
+            using var stream = file.BrowserFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024); // 10MB limit
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            file.Content = ms.ToArray();
+
+            // Process with parser service
+            file.ParsedData = await FileService.ParseSpirographFile(file.Content, file.Name);
+            
+            file.Status = ProcessingStatus.Completed;
+        }
+        catch (Exception ex)
+        {
+            file.Status = ProcessingStatus.Error;
+            file.ErrorMessage = ex.Message;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task DownloadZip()
+    {
+        isGeneratingZip = true;
+        StateHasChanged();
+
+        try
+        {
+            var completedFiles = files.Where(f => f.Status == ProcessingStatus.Completed).ToList();
+            var zipData = await FileService.GenerateZipArchive(completedFiles);
+            
+            await JS.InvokeVoidAsync("downloadFile", "spirograph-data.zip", Convert.ToBase64String(zipData));
+        }
+        finally
+        {
+            isGeneratingZip = false;
+            StateHasChanged();
+        }
+    }
+
+    private void RemoveFile(SpirographFile file)
+    {
+        files.Remove(file);
+    }
+
+    private void ClearAll()
+    {
+        files.Clear();
+    }
+
+    private string GetDropZoneClass()
+    {
+        var baseClass = "relative border-2 border-dashed rounded-xl p-12 transition-all duration-200 ";
+        
+        if (isDragging)
+        {
+            return baseClass + "border-spiro-primary bg-indigo-50 transform scale-102";
+        }
+        
+        return baseClass + "border-gray-300 hover:border-gray-400 bg-white hover:bg-gray-50";
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        int order = 0;
+        double size = bytes;
+        
+        while (size >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            size /= 1024;
+        }
+        
+        return $"{size:0.##} {sizes[order]}";
+    }
+}
