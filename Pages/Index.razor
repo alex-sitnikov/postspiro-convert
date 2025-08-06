@@ -203,7 +203,7 @@
 
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
     {
-        foreach (var file in e.GetMultipleFiles())
+        foreach (var file in e.GetMultipleFiles(100)) // Allow up to 100 files
         {
             var spirographFile = new SpirographFile
             {
