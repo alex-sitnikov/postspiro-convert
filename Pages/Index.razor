@@ -203,7 +203,10 @@
 
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
     {
-        foreach (var file in e.GetMultipleFiles(100)) // Allow up to 100 files
+        var uploadedFiles = e.GetMultipleFiles(100); // Allow up to 100 files
+        
+        // Add all files to the list first
+        foreach (var file in uploadedFiles)
         {
             var spirographFile = new SpirographFile
             {
@@ -214,10 +217,24 @@
             };
 
             files.Add(spirographFile);
-            StateHasChanged();
+        }
+        
+        StateHasChanged();
 
-            // Process file asynchronously
-            _ = Task.Run(async () => await ProcessFile(spirographFile));
+        // Process files sequentially to avoid memory pressure on mobile
+        _ = Task.Run(async () => await ProcessFilesSequentially());
+    }
+    
+    private async Task ProcessFilesSequentially()
+    {
+        var pendingFiles = files.Where(f => f.Status == ProcessingStatus.Pending).ToList();
+        
+        foreach (var file in pendingFiles)
+        {
+            await ProcessFile(file);
+            
+            // Small delay between files to allow garbage collection
+            await Task.Delay(50);
         }
     }
 
@@ -228,14 +245,26 @@
             file.Status = ProcessingStatus.Processing;
             await InvokeAsync(StateHasChanged);
 
-            // Read file content
+            // Read file content with memory optimization
             using var stream = file.BrowserFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024); // 10MB limit
             using var ms = new MemoryStream();
-            await stream.CopyToAsync(ms);
+            
+            // Copy in smaller chunks for mobile
+            var buffer = new byte[4096]; // 4KB chunks
+            int bytesRead;
+            while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+            {
+                await ms.WriteAsync(buffer, 0, bytesRead);
+            }
+            
             file.Content = ms.ToArray();
 
             // Process with parser service
             file.ParsedData = await FileService.ParseSpirographFile(file.Content, file.Name);
+            
+            // Clear the byte array after parsing to free memory
+            file.Content = null;
+            file.BrowserFile = null;
             
             file.Status = ProcessingStatus.Completed;
         }
@@ -246,6 +275,14 @@
         }
 
         await InvokeAsync(StateHasChanged);
+        
+        // Force garbage collection on mobile to free memory
+        if (OperatingSystem.IsBrowser())
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+        }
     }
 
     private async Task DownloadZip()
