@@ -1,10 +1,55 @@
 window.downloadFile = (filename, base64Data) => {
-    const link = document.createElement('a');
-    link.href = 'data:application/zip;base64,' + base64Data;
-    link.download = filename;
-    link.click();
-    link.remove();
+    try {
+        // Create blob from base64 data for better mobile compatibility
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'application/zip' });
+        
+        // Use modern download API if available
+        if ('showSaveFilePicker' in window) {
+            // Modern File System Access API (Chrome/Edge)
+            window.showSaveFilePicker({
+                suggestedName: filename,
+                types: [{
+                    description: 'ZIP files',
+                    accept: { 'application/zip': ['.zip'] }
+                }]
+            }).then(fileHandle => {
+                return fileHandle.createWritable();
+            }).then(writable => {
+                writable.write(blob);
+                return writable.close();
+            }).catch(err => {
+                // Fallback to blob URL method
+                fallbackDownload(blob, filename);
+            });
+        } else {
+            // Fallback for other browsers
+            fallbackDownload(blob, filename);
+        }
+    } catch (error) {
+        console.error('Download error:', error);
+        alert('Download failed. Please try again.');
+    }
 };
+
+function fallbackDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Clean up the URL object after a delay
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+}
 
 // Enhanced drag and drop support
 window.initializeDragDrop = (dotNetReference) => {
