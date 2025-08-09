@@ -95,7 +95,8 @@ public sealed record Demographics(
     int AgeYears,
     int WeightKg,
     double HeightM,
-    Sex Sex);
+    Sex Sex,
+    string Note);
 
 public sealed record FvcProbe(
     int Index,
@@ -497,7 +498,7 @@ public static class PnpParser
 
     private static Demographics ExtractDemographics(ReadOnlySpan<byte> src)
     {
-        string rawHeader = ReadHeaderString(src);
+        var (nameFromHdr, noteFromHdr) = ReadHeaderNameAndNote(src);
 
         // сканируем каждый байт, иначе можно промахнуться по фактическому смещению структуры
         int maxOff = Math.Min(4096, src.Length - 9); // -9: нам нужно читать off..off+8
@@ -515,42 +516,53 @@ public static class PnpParser
                 (sex == 0 || sex == 1);
 
             if (plausible)
-                return new Demographics(rawHeader, age, kg, Math.Round(height, 3), (Sex)sex);
+                return new Demographics(nameFromHdr, age, kg, Math.Round(height, 3), (Sex)sex, noteFromHdr);
         }
 
         // если не нашли — возвращаем header и значения по умолчанию
-        return new Demographics(rawHeader, 0, 0, 0, Sex.Male);
+        return new Demographics(nameFromHdr, 0, 0, 0, Sex.Male,string.Empty);
     }
 
-    private static string ReadHeaderString(ReadOnlySpan<byte> src)
+    /// <summary>
+    /// Парсит первые байты файла как CP1251-строку заголовка и возвращает (Name, Note).
+    /// Формат: [служебн]<ФИО>$<ПРИМЕЧАНИЕ>\0 …
+    /// Управляющие символы (&lt;0x20) удаляются, '$' сохраняется для разделения.
+    /// Также учитываются возможные RS/US/GS (0x1E/0x1F/0x1D) как разделители заголовка.
+    /// </summary>
+    private static (string Name, string Note) ReadHeaderNameAndNote(ReadOnlySpan<byte> src)
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         var enc1251 = Encoding.GetEncoding(1251);
 
-        // Декодируем первые <=256 байт (CP1251 — однобайтовая, безопасно)
+        // Декодируем первые <=256 байт (ANSI однобайтовая, безопасно)
         string s = enc1251.GetString(src[..Math.Min(256, src.Length)]);
 
-        // 1) Режем по первому служебному разделителю (NULL, RS/US/GS)
+        // Режем по первому «жёсткому» разделителю
         int cutCtrl = s.IndexOfAny(new[] { '\0', '\x1E', '\x1F', '\x1D' });
         if (cutCtrl >= 0) s = s[..cutCtrl];
 
-        // 2) Если встречается $, часто это внутривендорный маркер — обрезаем по нему
-        int cutDollar = s.IndexOf('$');
-        if (cutDollar >= 0) s = s[..cutDollar];
-
-        // 3) Удаляем оставшиеся управляющие символы (на случай смешанных заголовков)
+        // Чистим управляющие (<0x20), но сохраняем '$' как разделитель
         if (s.Length > 0)
         {
             var sb = new StringBuilder(s.Length);
             foreach (char ch in s)
             {
-                if (!char.IsControl(ch)) sb.Append(ch);
+                if (ch == '$' || ch >= ' ')
+                    sb.Append(ch);
             }
             s = sb.ToString();
         }
 
-        // 4) Финальная чистка пробелов
-        return s.Trim();
+        s = s.Trim();
+
+        // Делим на имя и примечание
+        int p = s.IndexOf('$');
+        if (p < 0)
+            return (s, string.Empty);
+
+        string name = s[..p].Trim();
+        string note = s[(p + 1)..].Trim();
+        return (name, note);
     }
 
     private static BtpsInfo ExtractBtps(ReadOnlySpan<byte> src, double defaultFactor)
