@@ -1,6 +1,6 @@
 # SpiroUI - Spirograph File Parser
 
-A beautiful Blazor WebAssembly application for parsing vintage Spirograph device files and converting them to JSON format.
+Blazor WebAssembly application for parsing vintage Spirograph device files and converting them to JSON format.
 
 ## Features
 
@@ -22,10 +22,6 @@ A beautiful Blazor WebAssembly application for parsing vintage Spirograph device
 ### Installation
 
 1. Clone the repository:
-```bash
-cd /mnt/c/projects/SpiroReverse/SpiroUI
-```
-
 2. Install npm dependencies:
 ```bash
 npm install
@@ -57,33 +53,10 @@ dotnet publish -c Release
 
 The output will be in the `bin/Release/net9.0/publish/wwwroot` directory.
 
-## Integrating Your Parser
-
-The application includes a placeholder parser in `Services/FileProcessingService.cs`. To integrate your actual Spirograph parser:
-
-1. Open `Services/FileProcessingService.cs`
-2. Replace the `ParseSpirographFile` method with your actual parsing logic
-3. Update the `DetectFormatVersion` method to detect your binary format
-4. Implement the `ParsePatterns` method to extract pattern data from your files
-
-Example integration:
-```csharp
-public Task<string> ParseSpirographFile(byte[] fileContent, string fileName)
-{
-    // Call your existing parser here
-    var spirographData = YourParser.Parse(fileContent);
-    
-    // Convert to JSON
-    return Task.FromResult(JsonSerializer.Serialize(spirographData, _jsonOptions));
-}
-```
-
 ## Supported File Formats
 
 The UI is configured to accept files with the following extensions:
-- `.spiro`
-- `.spr`
-- `.bin`
+- `.pnp`
 
 You can modify the accepted file types in `Pages/Index.razor` by updating the `accept` attribute on the `InputFile` component.
 
@@ -119,13 +92,6 @@ The application can be deployed as static files to any web server or CDN:
 2. Copy the contents of `wwwroot` to your web server
 3. Configure your server to serve `index.html` for all routes (for client-side routing)
 
-### Deployment Options
-
-- **GitHub Pages**: Use the `.github/workflows/deploy.yml` workflow
-- **Azure Static Web Apps**: Deploy directly from GitHub
-- **Netlify/Vercel**: Connect your repository for automatic deployments
-- **Traditional Web Server**: Copy files to IIS, Apache, or Nginx
-
 ## License
 
-This project is part of the SpiroReverse suite.
+MIT
