@@ -1,5 +1,8 @@
 window.downloadFile = (filename, base64Data) => {
     try {
+        // Determine MIME type and file type info based on extension
+        const fileInfo = getFileTypeInfo(filename);
+        
         // Create blob from base64 data for better mobile compatibility
         const byteCharacters = atob(base64Data);
         const byteNumbers = new Array(byteCharacters.length);
@@ -7,18 +10,20 @@ window.downloadFile = (filename, base64Data) => {
             byteNumbers[i] = byteCharacters.charCodeAt(i);
         }
         const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: 'application/zip' });
+        const blob = new Blob([byteArray], { type: fileInfo.mimeType });
         
         // Use modern download API if available
         if ('showSaveFilePicker' in window) {
             // Modern File System Access API (Chrome/Edge)
-            window.showSaveFilePicker({
+            const pickerOptions = {
                 suggestedName: filename,
                 types: [{
-                    description: 'ZIP files',
-                    accept: { 'application/zip': ['.zip'] }
+                    description: fileInfo.description,
+                    accept: { [fileInfo.mimeType]: [fileInfo.extension] }
                 }]
-            }).then(fileHandle => {
+            };
+            
+            window.showSaveFilePicker(pickerOptions).then(fileHandle => {
                 return fileHandle.createWritable();
             }).then(writable => {
                 writable.write(blob);
@@ -36,6 +41,37 @@ window.downloadFile = (filename, base64Data) => {
         alert('Download failed. Please try again.');
     }
 };
+
+function getFileTypeInfo(filename) {
+    const extension = filename.toLowerCase().split('.').pop();
+    
+    switch (extension) {
+        case 'xlsx':
+            return {
+                mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                extension: '.xlsx',
+                description: 'Excel files'
+            };
+        case 'zip':
+            return {
+                mimeType: 'application/zip',
+                extension: '.zip',
+                description: 'ZIP files'
+            };
+        case 'json':
+            return {
+                mimeType: 'application/json',
+                extension: '.json',
+                description: 'JSON files'
+            };
+        default:
+            return {
+                mimeType: 'application/octet-stream',
+                extension: '.' + extension,
+                description: 'Files'
+            };
+    }
+}
 
 function fallbackDownload(blob, filename) {
     const url = URL.createObjectURL(blob);

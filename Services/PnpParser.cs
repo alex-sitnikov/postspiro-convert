@@ -16,6 +16,7 @@
 // ------------------------------------------------------------------------------------
 
 using System.Buffers.Binary;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -24,43 +25,43 @@ namespace SpiroUI.Services;
 #region ── Domain models ─────────────────────────────────────────────────────────────
 
 public readonly record struct PredictedFVC(
-    double FVC_L,         // ФЖЕЛ(л)
-    double IC_L,          // ЕВд(л) — в таблице ФЖЕЛ
-    double FEV1_L,        // ОФВ1(л)
-    double FEV1_over_VC,  // ОФВ1/ЖЕЛ
-    double PEF_Lps,       // ПОС(л/с)
-    double OVnos_L,       // ОВнос(л)
-    double FEF25_Lps,     // МОС25(л/с)
-    double FEF50_Lps,     // МОС50(л/с)
-    double FEF75_Lps,     // МОС75(л/с)
-    double FEF25_75_Lps,  // СОС25–75(л/с)
-    double FEF75_85_Lps,  // СОС75–85(л/с)
-    double TFVC_s         // Тфжел(с)
+    double FVC_L, // ФЖЕЛ(л)
+    double IC_L, // ЕВд(л) — в таблице ФЖЕЛ
+    double FEV1_L, // ОФВ1(л)
+    double FEV1_over_VC, // ОФВ1/ЖЕЛ
+    double PEF_Lps, // ПОС(л/с)
+    double OVnos_L, // ОВнос(л)
+    double FEF25_Lps, // МОС25(л/с)
+    double FEF50_Lps, // МОС50(л/с)
+    double FEF75_Lps, // МОС75(л/с)
+    double FEF25_75_Lps, // СОС25–75(л/с)
+    double FEF75_85_Lps, // СОС75–85(л/с)
+    double TFVC_s // Тфжел(с)
 );
 
 public readonly record struct PredictedZhEL(
-    double VC_L,          // ЖЕЛ(л)
-    double IC_L,          // ЕВд(л)
-    double VT_L,          // ДО(л)
-    double IRV_L,         // РОвд(л)
-    double ERV_L         // РОвыд(л)
+    double VC_L, // ЖЕЛ(л)
+    double IC_L, // ЕВд(л)
+    double VT_L, // ДО(л)
+    double IRV_L, // РОвд(л)
+    double ERV_L // РОвыд(л)
     // double VT_over_VC_pct // ДО/ЖЕЛ(%)
 );
 
 public readonly record struct PredictedMOD(
     //double RR_perMin,     // ЧД(1/мин)
-    double VE_Lpm,        // МОД(л/мин)
-    double VT_L,          // ДО(л)
-    double VO2_mlMin,     // ПО2(мл/мин)
-    double KNO2_mlL      // КНО2(мл/л)
+    double VE_Lpm, // МОД(л/мин)
+    double VT_L, // ДО(л)
+    double VO2_mlMin, // ПО2(мл/мин)
+    double KNO2_mlL // КНО2(мл/л)
     //double Texp_over_Tinsp // Твыд/Твд (как «должное» фиксированное)
 );
 
 public readonly record struct PredictedMVL(
     //double RR_perMin,     // ЧД(1/мин)
-    double MVV_Lpm,       // МВЛ(л/мин)
-    double VT_L,          // ДО(л)
-    double RD_pct        // РД(%)
+    double MVV_Lpm, // МВЛ(л/мин)
+    double VT_L, // ДО(л)
+    double RD_pct // РД(%)
     //double MVV_over_MOD   // МВЛ/МОД
 );
 
@@ -73,8 +74,8 @@ public readonly record struct PredictedSet(
 
 public enum MvvPredMode
 {
-    Fev1TimesFactor,          // MVV_pred = round(FEV1_pred,2) × factor
-    Fev1TimesFactorTimesBtps  // MVV_pred = round(FEV1_pred,2) × factor × BTPS_amb
+    Fev1TimesFactor, // MVV_pred = round(FEV1_pred,2) × factor
+    Fev1TimesFactorTimesBtps // MVV_pred = round(FEV1_pred,2) × factor × BTPS_amb
 }
 
 public enum Sex
@@ -129,8 +130,8 @@ public sealed record ModBlock(
     double MinuteVentilation_Lpm,
     double TidalVolume_L,
     double OxygenUptake_mlMin,
-    double Kio2_mlPerL,          // kO2: мл O2 на 1 литр вентиляции
-    double Kio2VentEq_LperL,     // вентиляционный эквивалент по O2: л воздуха на 1 л O2
+    double Kio2_mlPerL, // kO2: мл O2 на 1 литр вентиляции
+    double Kio2VentEq_LperL, // вентиляционный эквивалент по O2: л воздуха на 1 л O2
     double TexpOverTinsp);
 
 public sealed record MvlBlock(
@@ -138,9 +139,7 @@ public sealed record MvlBlock(
     double MaxVentilation_Lpm,
     double TidalVolume_L,
     double BreathingReserve_Pct, // РД(%)
-    double MvlOverMod );        // МВЛ/МОД (безразмерное отношение)
-                                 
-                                  
+    double MvlOverMod); // МВЛ/МОД (безразмерное отношение)
 
 public sealed record PnpRecord(
     string FileName,
@@ -171,133 +170,133 @@ public static class PnpParser
 
     #endregion
 
-        public static PredictedSet Calculate(
-            int ageYears,
-            double heightCm,
-            Sex sex,
-            double btpsAmb,
-            double veRestOverride = 9.68,
-            double mvvFactorFemale = 35.0,  // по умолчанию: Ж ×35 (даёт 116.87 при FEV1≈3.34)
-            double mvvFactorMale   = 30.0,  // по умолчанию: М ×30
-            MvvPredMode mvvMode    = MvvPredMode.Fev1TimesFactor
-        )
-        {
-            if (ageYears  is < 18 or > 90)   throw new ArgumentOutOfRangeException(nameof(ageYears));
-            if (heightCm  is < 130 or > 210) throw new ArgumentOutOfRangeException(nameof(heightCm));
-            if (btpsAmb   <= 0)              btpsAmb = 1.0; // не используем, если режим без BTPS
+    public static PredictedSet Calculate(
+        int ageYears,
+        double heightCm,
+        Sex sex,
+        double btpsAmb,
+        double veRestOverride = 9.68,
+        double mvvFactorFemale = 35.0, // по умолчанию: Ж ×35 (даёт 116.87 при FEV1≈3.34)
+        double mvvFactorMale = 30.0, // по умолчанию: М ×30
+        MvvPredMode mvvMode = MvvPredMode.Fev1TimesFactor
+    )
+    {
+        if (ageYears is < 18 or > 90) throw new ArgumentOutOfRangeException(nameof(ageYears));
+        if (heightCm is < 130 or > 210) throw new ArgumentOutOfRangeException(nameof(heightCm));
+        if (btpsAmb <= 0) btpsAmb = 1.0; // не используем, если режим без BTPS
 
-            // ===== 1) ЖЕЛ (VC) — ECCS с калибровкой под Pulmo-4 =====
-            // Муж: множитель 1.050 → VC≈4.93 при 60/185.
-            // Жен: множитель 1.041 → VC≈3.98 при 30/172.
-            double VC =
-                sex == Sex.Male
-                    ? (0.05200 * heightCm - 0.02200 * ageYears - 3.6000) * 1.050
-                    : (0.04100 * heightCm - 0.01800 * ageYears - 2.6900) * 1.041;
+        // ===== 1) ЖЕЛ (VC) — ECCS с калибровкой под Pulmo-4 =====
+        // Муж: множитель 1.050 → VC≈4.93 при 60/185.
+        // Жен: множитель 1.041 → VC≈3.98 при 30/172.
+        double VC =
+            sex == Sex.Male
+                ? (0.05200 * heightCm - 0.02200 * ageYears - 3.6000) * 1.050
+                : (0.04100 * heightCm - 0.01800 * ageYears - 2.6900) * 1.041;
 
-            // ===== 2) ФЖЕЛ (FVC) =====
-            double FVC = 0.97 * VC; // Pulmo-4: FVC ≈ 0.97·VC
+        // ===== 2) ФЖЕЛ (FVC) =====
+        double FVC = 0.97 * VC; // Pulmo-4: FVC ≈ 0.97·VC
 
-            // ===== 3) ОФВ1 (FEV1) — ECCS с мягкой калибровкой =====
-            double fev1Raw =
-                sex == Sex.Male
-                    ? (0.04100 * heightCm - 0.02400 * ageYears - 2.1900)
-                    : (0.03400 * heightCm - 0.02500 * ageYears - 1.5780);
+        // ===== 3) ОФВ1 (FEV1) — ECCS с мягкой калибровкой =====
+        double fev1Raw =
+            sex == Sex.Male
+                ? (0.04100 * heightCm - 0.02400 * ageYears - 2.1900)
+                : (0.03400 * heightCm - 0.02500 * ageYears - 1.5780);
 
-            // Масштаб под Pulmo-4: Ж 30/172 → ~3.34; М 60/185 → ~3.52.
-            double FEV1 = sex == Sex.Male ? fev1Raw * 0.890 : fev1Raw * 0.948;
+        // Масштаб под Pulmo-4: Ж 30/172 → ~3.34; М 60/185 → ~3.52.
+        double FEV1 = sex == Sex.Male ? fev1Raw * 0.890 : fev1Raw * 0.948;
 
-            // Нормативная доля ОФВ1/ЖЕЛ — 0.86.
-            const double FEV1_over_VC = 0.86;
+        // Нормативная доля ОФВ1/ЖЕЛ — 0.86.
+        const double FEV1_over_VC = 0.86;
 
-            // ===== 4) Пикфлоу (PEF) и производные скорости =====
-            // База: Nunn–Gregg (в л/мин) → /60; далее небольшой масштаб kPEF.
-            double pef_lps = (sex == Sex.Male
-                                ? (5.12 * heightCm - 5.12 * ageYears - 188.0)
-                                : (3.72 * heightCm - 2.81 * ageYears - 110.0)) / 60.0;
+        // ===== 4) Пикфлоу (PEF) и производные скорости =====
+        // База: Nunn–Gregg (в л/мин) → /60; далее небольшой масштаб kPEF.
+        double pef_lps = (sex == Sex.Male
+            ? (5.12 * heightCm - 5.12 * ageYears - 188.0)
+            : (3.72 * heightCm - 2.81 * ageYears - 110.0)) / 60.0;
 
-            double kPEF = sex == Sex.Male ? 0.965 : 0.964;     // Ж 30/172 → 7.16 л/с
-            double PEF = pef_lps * kPEF;
+        double kPEF = sex == Sex.Male ? 0.965 : 0.964; // Ж 30/172 → 7.16 л/с
+        double PEF = pef_lps * kPEF;
 
-            // Калиброванные коэффициенты под скрины Pulmo-4:
-            double FEF25    = 0.912 * PEF; // 6.53 при PEF=7.16
-            double FEF50    = 0.683 * PEF; // 4.89
-            double FEF75    = 0.346 * PEF; // 2.48
-            double FEF25_75 = 0.571 * PEF; // 4.09
-            double FEF75_85 = 0.100 * PEF; // 0.72
+        // Калиброванные коэффициенты под скрины Pulmo-4:
+        double FEF25 = 0.912 * PEF; // 6.53 при PEF=7.16
+        double FEF50 = 0.683 * PEF; // 4.89
+        double FEF75 = 0.346 * PEF; // 2.48
+        double FEF25_75 = 0.571 * PEF; // 4.09
+        double FEF75_85 = 0.100 * PEF; // 0.72
 
-            // ===== 5) ЖЕЛ-таблица (покой) =====
-            const double VT_rest = 0.48;        // фиксированное «должное» ДО
-            double IC_rest = VC;                // В таблице ЖЕЛ: ЕВдд = ЖЕЛд
-            double IRV = 0.50 * VC;             // РОвдд ≈ 50% VC
-            double ERV = 0.35 * VC;             // РОвыдд ≈ 35% VC
-            double VTpct = VT_rest / VC * 100.0;
+        // ===== 5) ЖЕЛ-таблица (покой) =====
+        const double VT_rest = 0.48; // фиксированное «должное» ДО
+        double IC_rest = VC; // В таблице ЖЕЛ: ЕВдд = ЖЕЛд
+        double IRV = 0.50 * VC; // РОвдд ≈ 50% VC
+        double ERV = 0.35 * VC; // РОвыдд ≈ 35% VC
+        double VTpct = VT_rest / VC * 100.0;
 
-            // ===== 6) МОД-таблица (покой) =====
-            const double RR_rest = 20.17;
-            double VE = veRestOverride;         // по умолчанию 9.68 л/мин
-            const double kO2  = 25.0;           // мл/л
-            double VO2 = VE * kO2;              // 242 мл/мин при VE=9.68
-            const double KNO2 = 40.0;           // мл/л
-            const double TexpTinsp = 1.30;
+        // ===== 6) МОД-таблица (покой) =====
+        const double RR_rest = 20.17;
+        double VE = veRestOverride; // по умолчанию 9.68 л/мин
+        const double kO2 = 25.0; // мл/л
+        double VO2 = VE * kO2; // 242 мл/мин при VE=9.68
+        const double KNO2 = 40.0; // мл/л
+        const double TexpTinsp = 1.30;
 
-            // ===== 7) МВЛ-таблица =====
-            // ВАЖНО: Pulmo-4 для «должной» МВЛ использует FEV1 с ОКРУГЛЕНИЕМ до 0.01
-            // (это позволяет получить 116.87 при Ж,30/172: round(3.335,2)=3.34; 3.34×35=116.9).
-            double fev1Rounded = Math.Round(FEV1, 2, MidpointRounding.AwayFromZero);
-            double mvvFactor = (sex == Sex.Female ? mvvFactorFemale : mvvFactorMale);
-            double mvvBtpsMultiplier = (mvvMode == MvvPredMode.Fev1TimesFactorTimesBtps) ? btpsAmb : 1.0;
-            double MVV = Math.Max(0.0, fev1Rounded) * mvvFactor * mvvBtpsMultiplier;
+        // ===== 7) МВЛ-таблица =====
+        // ВАЖНО: Pulmo-4 для «должной» МВЛ использует FEV1 с ОКРУГЛЕНИЕМ до 0.01
+        // (это позволяет получить 116.87 при Ж,30/172: round(3.335,2)=3.34; 3.34×35=116.9).
+        double fev1Rounded = Math.Round(FEV1, 2, MidpointRounding.AwayFromZero);
+        double mvvFactor = (sex == Sex.Female ? mvvFactorFemale : mvvFactorMale);
+        double mvvBtpsMultiplier = (mvvMode == MvvPredMode.Fev1TimesFactorTimesBtps) ? btpsAmb : 1.0;
+        double MVV = Math.Max(0.0, fev1Rounded) * mvvFactor * mvvBtpsMultiplier;
 
-            const double RR_mvl = 85.0;
-            double VT_mvl = 0.40 * VC;
-            const double RD_pct = 85.0;
-            double MVV_over_MOD = MVV / VE;
+        const double RR_mvl = 85.0;
+        double VT_mvl = 0.40 * VC;
+        const double RD_pct = 85.0;
+        double MVV_over_MOD = MVV / VE;
 
-            // ===== 8) Упаковка результата =====
-            var fvc = new PredictedFVC(
-                FVC_L: FVC,
-                IC_L:  FVC,           // В таблице ФЖЕЛ «ЕВд(л)» печатается как FVC
-                FEV1_L: FEV1,
-                FEV1_over_VC: FEV1_over_VC,
-                PEF_Lps: PEF,
-                OVnos_L: VT_rest,
-                FEF25_Lps: FEF25,
-                FEF50_Lps: FEF50,
-                FEF75_Lps: FEF75,
-                FEF25_75_Lps: FEF25_75,
-                FEF75_85_Lps: FEF75_85,
-                TFVC_s: 4.5
-            );
+        // ===== 8) Упаковка результата =====
+        var fvc = new PredictedFVC(
+            FVC_L: FVC,
+            IC_L: FVC, // В таблице ФЖЕЛ «ЕВд(л)» печатается как FVC
+            FEV1_L: FEV1,
+            FEV1_over_VC: FEV1_over_VC,
+            PEF_Lps: PEF,
+            OVnos_L: VT_rest,
+            FEF25_Lps: FEF25,
+            FEF50_Lps: FEF50,
+            FEF75_Lps: FEF75,
+            FEF25_75_Lps: FEF25_75,
+            FEF75_85_Lps: FEF75_85,
+            TFVC_s: 4.5
+        );
 
-            var zhel = new PredictedZhEL(
-                VC_L: VC,
-                IC_L: IC_rest,
-                VT_L: VT_rest,
-                IRV_L: IRV,
-                ERV_L: ERV
-                // VT_over_VC_pct: VTpct
-            );
+        var zhel = new PredictedZhEL(
+            VC_L: VC,
+            IC_L: IC_rest,
+            VT_L: VT_rest,
+            IRV_L: IRV,
+            ERV_L: ERV
+            // VT_over_VC_pct: VTpct
+        );
 
-            var mod = new PredictedMOD(
-                // RR_perMin: RR_rest,
-                VE_Lpm: VE,
-                VT_L: VT_rest,
-                VO2_mlMin: VO2,
-                KNO2_mlL: KNO2
-                // Texp_over_Tinsp: TexpTinsp
-            );
+        var mod = new PredictedMOD(
+            // RR_perMin: RR_rest,
+            VE_Lpm: VE,
+            VT_L: VT_rest,
+            VO2_mlMin: VO2,
+            KNO2_mlL: KNO2
+            // Texp_over_Tinsp: TexpTinsp
+        );
 
-            var mvl = new PredictedMVL(
-                // RR_perMin: RR_mvl,
-                MVV_Lpm: MVV,
-                VT_L: VT_mvl,
-                RD_pct: RD_pct
-                // MVV_over_MOD: MVV_over_MOD
-            );
+        var mvl = new PredictedMVL(
+            // RR_perMin: RR_mvl,
+            MVV_Lpm: MVV,
+            VT_L: VT_mvl,
+            RD_pct: RD_pct
+            // MVV_over_MOD: MVV_over_MOD
+        );
 
-            return new PredictedSet(fvc, zhel, mod, mvl);
-        }
-    
+        return new PredictedSet(fvc, zhel, mod, mvl);
+    }
+
     // --------------------------------------------------------------------------------
     public static PnpRecord ParseFile(string filePath,
         double defaultBtpsFactor = 1.081,
@@ -347,7 +346,7 @@ public static class PnpParser
                 values[2] * 1e-3,
                 values[3] * 1e-3,
                 values[4] * 1e-3,
-                values[0] > 0 ? 100.0 * values[2]/values[0] : double.NaN
+                values[0] > 0 ? 100.0 * values[2] / values[0] : double.NaN
             );
         }
 
@@ -359,10 +358,10 @@ public static class PnpParser
             var modVals = ReadFloatArray(buffer.Slice(payloadStart, 12));
             var volumeCurve = ReadInt16Block(buffer, payloadStart + 12);
 
-            double kio2 = kio2_mlPerL;                              // уже есть параметр метода Parse(...)
-            double vo2  = modVals[1] * kio2;                        // VO2 = VE * kO2
+            double kio2 = kio2_mlPerL; // уже есть параметр метода Parse(...)
+            double vo2 = modVals[1] * kio2; // VO2 = VE * kO2
             double kio2VentEq = kio2 > 0 ? 1000.0 / kio2 : double.NaN; // КИО2 (л/л) = 1000 / (мл/л)
-            
+
             var texpTinsp = CalculateTexpOverTinsp(volumeCurve);
             mod = new ModBlock(
                 modVals[0],
@@ -379,9 +378,9 @@ public static class PnpParser
         if (mvlPos >= 0 && mvlPos + TagMvl.Length + 12 <= buffer.Length)
         {
             float[] mvlVals = ReadFloatArray(buffer.Slice(mvlPos + TagMvl.Length, 12));
-            double rr      = mvlVals[0];
-            double mvlLpm  = mvlVals[1];
-            double vtL     = mvlVals[2];
+            double rr = mvlVals[0];
+            double mvlLpm = mvlVals[1];
+            double vtL = mvlVals[2];
 
             // РД(%) = 100 * (1 - МОД/МВЛ). МОД берём из уже распарсенного блока MOD.
             double rdPct =
@@ -394,11 +393,11 @@ public static class PnpParser
                 (mod is { MinuteVentilation_Lpm: > 0 })
                     ? mvlLpm / mod!.MinuteVentilation_Lpm
                     : double.NaN;
-            
+
             mvl = new MvlBlock(rr, mvlLpm, vtL, rdPct, mvlOverMod);
         }
 
-        var predicted = Calculate(patient.AgeYears, patient.HeightM*100, patient.Sex, btps.Factor);
+        var predicted = Calculate(patient.AgeYears, patient.HeightM * 100, patient.Sex, btps.Factor);
         return new PnpRecord(fileName, /*predicted,*/ patient, btps, zhel, mod, mvl, probes);
     }
 
@@ -486,9 +485,9 @@ public static class PnpParser
 
     private static double CalculateTexpOverTinsp(ReadOnlySpan<short> volumeCurve)
     {
-        if (volumeCurve.Length > 2) 
-            return (double) volumeCurve[0] / volumeCurve[1];
-        
+        if (volumeCurve.Length > 2)
+            return (double)volumeCurve[0] / volumeCurve[1];
+
         return Double.NaN;
     }
 
@@ -504,14 +503,14 @@ public static class PnpParser
         int maxOff = Math.Min(4096, src.Length - 9); // -9: нам нужно читать off..off+8
         for (int off = 0; off < maxOff; off++) // ВАЖНО: off++ (не off += 2)
         {
-            ushort age    = BinaryPrimitives.ReadUInt16LittleEndian(src.Slice(off, 2));
-            ushort kg     = BinaryPrimitives.ReadUInt16LittleEndian(src.Slice(off + 2, 2));
-            float  height = BitConverter.ToSingle(src.Slice(off + 4, 4));
-            byte   sex    = src[off + 8];
+            ushort age = BinaryPrimitives.ReadUInt16LittleEndian(src.Slice(off, 2));
+            ushort kg = BinaryPrimitives.ReadUInt16LittleEndian(src.Slice(off + 2, 2));
+            float height = BitConverter.ToSingle(src.Slice(off + 4, 4));
+            byte sex = src[off + 8];
 
             bool plausible =
-                age    is >= 5  and <= 120 &&
-                kg     is >= 20 and <= 200 &&
+                age is >= 5 and <= 120 &&
+                kg is >= 20 and <= 200 &&
                 height is >= 1.2f and <= 2.5f &&
                 (sex == 0 || sex == 1);
 
@@ -520,14 +519,20 @@ public static class PnpParser
         }
 
         // если не нашли — возвращаем header и значения по умолчанию
-        return new Demographics(nameFromHdr, 0, 0, 0, Sex.Male,string.Empty);
+        return new Demographics(nameFromHdr, 0, 0, 0, Sex.Male, string.Empty);
+    }
+
+    private static string ReadHeaderString(ReadOnlySpan<byte> src)
+    {
+        // Возвращаем только имя (для обратной совместимости)
+        var (name, _) = ReadHeaderNameAndNote(src);
+        return name;
     }
 
     /// <summary>
     /// Парсит первые байты файла как CP1251-строку заголовка и возвращает (Name, Note).
     /// Формат: [служебн]<ФИО>$<ПРИМЕЧАНИЕ>\0 …
-    /// Управляющие символы (&lt;0x20) удаляются, '$' сохраняется для разделения.
-    /// Также учитываются возможные RS/US/GS (0x1E/0x1F/0x1D) как разделители заголовка.
+    /// После извлечения принудительно отбрасываем последний символ примечания (если он есть).
     /// </summary>
     private static (string Name, string Note) ReadHeaderNameAndNote(ReadOnlySpan<byte> src)
     {
@@ -537,11 +542,11 @@ public static class PnpParser
         // Декодируем первые <=256 байт (ANSI однобайтовая, безопасно)
         string s = enc1251.GetString(src[..Math.Min(256, src.Length)]);
 
-        // Режем по первому «жёсткому» разделителю
+        // 1) Режем по первому служебному разделителю (NULL, RS/US/GS)
         int cutCtrl = s.IndexOfAny(new[] { '\0', '\x1E', '\x1F', '\x1D' });
         if (cutCtrl >= 0) s = s[..cutCtrl];
 
-        // Чистим управляющие (<0x20), но сохраняем '$' как разделитель
+        // 2) Удаляем управляющие (<0x20), оставляя '$' как разделитель
         if (s.Length > 0)
         {
             var sb = new StringBuilder(s.Length);
@@ -550,19 +555,53 @@ public static class PnpParser
                 if (ch == '$' || ch >= ' ')
                     sb.Append(ch);
             }
+
             s = sb.ToString();
         }
 
         s = s.Trim();
 
-        // Делим на имя и примечание
+        // 3) Делим на имя и примечание
         int p = s.IndexOf('$');
+        string name, note;
         if (p < 0)
-            return (s, string.Empty);
+        {
+            name = s;
+            note = string.Empty;
+        }
+        else
+        {
+            name = s[..p].Trim();
+            note = s[(p + 1)..].Trim();
 
-        string name = s[..p].Trim();
-        string note = s[(p + 1)..].Trim();
+            // КЛЮЧЕВАЯ ПРАВКА: всегда отбрасываем последний символ примечания, если он есть
+            note = DropLastIfAny(note);
+        }
+
+        // Финальная чистка имени — только печатаемые «именные» символы
+        name = CleanupName(name);
+
         return (name, note);
+    }
+
+/* ====================== Хелперы ====================== */
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    static string DropLastIfAny(string s) => string.IsNullOrEmpty(s) ? s : s[..(s.Length - 1)];
+
+    static string CleanupName(string s)
+    {
+        s = s.Trim();
+        if (s.Length == 0) return s;
+
+        var sb = new StringBuilder(s.Length);
+        foreach (var ch in s)
+        {
+            if (char.IsLetter(ch) || ch == ' ' || ch == '-' || ch == '.' || ch == '\'')
+                sb.Append(ch);
+        }
+
+        return sb.ToString().Trim();
     }
 
     private static BtpsInfo ExtractBtps(ReadOnlySpan<byte> src, double defaultFactor)
