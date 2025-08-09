@@ -24,60 +24,6 @@ namespace SpiroUI.Services;
 
 #region ── Domain models ─────────────────────────────────────────────────────────────
 
-public readonly record struct PredictedFVC(
-    double FVC_L, // ФЖЕЛ(л)
-    double IC_L, // ЕВд(л) — в таблице ФЖЕЛ
-    double FEV1_L, // ОФВ1(л)
-    double FEV1_over_VC, // ОФВ1/ЖЕЛ
-    double PEF_Lps, // ПОС(л/с)
-    double OVnos_L, // ОВнос(л)
-    double FEF25_Lps, // МОС25(л/с)
-    double FEF50_Lps, // МОС50(л/с)
-    double FEF75_Lps, // МОС75(л/с)
-    double FEF25_75_Lps, // СОС25–75(л/с)
-    double FEF75_85_Lps, // СОС75–85(л/с)
-    double TFVC_s // Тфжел(с)
-);
-
-public readonly record struct PredictedZhEL(
-    double VC_L, // ЖЕЛ(л)
-    double IC_L, // ЕВд(л)
-    double VT_L, // ДО(л)
-    double IRV_L, // РОвд(л)
-    double ERV_L // РОвыд(л)
-    // double VT_over_VC_pct // ДО/ЖЕЛ(%)
-);
-
-public readonly record struct PredictedMOD(
-    //double RR_perMin,     // ЧД(1/мин)
-    double VE_Lpm, // МОД(л/мин)
-    double VT_L, // ДО(л)
-    double VO2_mlMin, // ПО2(мл/мин)
-    double KNO2_mlL // КНО2(мл/л)
-    //double Texp_over_Tinsp // Твыд/Твд (как «должное» фиксированное)
-);
-
-public readonly record struct PredictedMVL(
-    //double RR_perMin,     // ЧД(1/мин)
-    double MVV_Lpm, // МВЛ(л/мин)
-    double VT_L, // ДО(л)
-    double RD_pct // РД(%)
-    //double MVV_over_MOD   // МВЛ/МОД
-);
-
-public readonly record struct PredictedSet(
-    PredictedFVC FVC,
-    PredictedZhEL ZhEL,
-    PredictedMOD MOD,
-    PredictedMVL MVL
-);
-
-public enum MvvPredMode
-{
-    Fev1TimesFactor, // MVV_pred = round(FEV1_pred,2) × factor
-    Fev1TimesFactorTimesBtps // MVV_pred = round(FEV1_pred,2) × factor × BTPS_amb
-}
-
 public enum Sex
 {
     Male = 0,
@@ -169,133 +115,6 @@ public static class PnpParser
     private static readonly byte[][] AllTags = { TagMod, TagMvl, TagZhel, TagF1, TagF2, TagF3 };
 
     #endregion
-
-    public static PredictedSet Calculate(
-        int ageYears,
-        double heightCm,
-        Sex sex,
-        double btpsAmb,
-        double veRestOverride = 9.68,
-        double mvvFactorFemale = 35.0, // по умолчанию: Ж ×35 (даёт 116.87 при FEV1≈3.34)
-        double mvvFactorMale = 30.0, // по умолчанию: М ×30
-        MvvPredMode mvvMode = MvvPredMode.Fev1TimesFactor
-    )
-    {
-        if (ageYears is < 18 or > 90) throw new ArgumentOutOfRangeException(nameof(ageYears));
-        if (heightCm is < 130 or > 210) throw new ArgumentOutOfRangeException(nameof(heightCm));
-        if (btpsAmb <= 0) btpsAmb = 1.0; // не используем, если режим без BTPS
-
-        // ===== 1) ЖЕЛ (VC) — ECCS с калибровкой под Pulmo-4 =====
-        // Муж: множитель 1.050 → VC≈4.93 при 60/185.
-        // Жен: множитель 1.041 → VC≈3.98 при 30/172.
-        double VC =
-            sex == Sex.Male
-                ? (0.05200 * heightCm - 0.02200 * ageYears - 3.6000) * 1.050
-                : (0.04100 * heightCm - 0.01800 * ageYears - 2.6900) * 1.041;
-
-        // ===== 2) ФЖЕЛ (FVC) =====
-        double FVC = 0.97 * VC; // Pulmo-4: FVC ≈ 0.97·VC
-
-        // ===== 3) ОФВ1 (FEV1) — ECCS с мягкой калибровкой =====
-        double fev1Raw =
-            sex == Sex.Male
-                ? (0.04100 * heightCm - 0.02400 * ageYears - 2.1900)
-                : (0.03400 * heightCm - 0.02500 * ageYears - 1.5780);
-
-        // Масштаб под Pulmo-4: Ж 30/172 → ~3.34; М 60/185 → ~3.52.
-        double FEV1 = sex == Sex.Male ? fev1Raw * 0.890 : fev1Raw * 0.948;
-
-        // Нормативная доля ОФВ1/ЖЕЛ — 0.86.
-        const double FEV1_over_VC = 0.86;
-
-        // ===== 4) Пикфлоу (PEF) и производные скорости =====
-        // База: Nunn–Gregg (в л/мин) → /60; далее небольшой масштаб kPEF.
-        double pef_lps = (sex == Sex.Male
-            ? (5.12 * heightCm - 5.12 * ageYears - 188.0)
-            : (3.72 * heightCm - 2.81 * ageYears - 110.0)) / 60.0;
-
-        double kPEF = sex == Sex.Male ? 0.965 : 0.964; // Ж 30/172 → 7.16 л/с
-        double PEF = pef_lps * kPEF;
-
-        // Калиброванные коэффициенты под скрины Pulmo-4:
-        double FEF25 = 0.912 * PEF; // 6.53 при PEF=7.16
-        double FEF50 = 0.683 * PEF; // 4.89
-        double FEF75 = 0.346 * PEF; // 2.48
-        double FEF25_75 = 0.571 * PEF; // 4.09
-        double FEF75_85 = 0.100 * PEF; // 0.72
-
-        // ===== 5) ЖЕЛ-таблица (покой) =====
-        const double VT_rest = 0.48; // фиксированное «должное» ДО
-        double IC_rest = VC; // В таблице ЖЕЛ: ЕВдд = ЖЕЛд
-        double IRV = 0.50 * VC; // РОвдд ≈ 50% VC
-        double ERV = 0.35 * VC; // РОвыдд ≈ 35% VC
-        double VTpct = VT_rest / VC * 100.0;
-
-        // ===== 6) МОД-таблица (покой) =====
-        const double RR_rest = 20.17;
-        double VE = veRestOverride; // по умолчанию 9.68 л/мин
-        const double kO2 = 25.0; // мл/л
-        double VO2 = VE * kO2; // 242 мл/мин при VE=9.68
-        const double KNO2 = 40.0; // мл/л
-        const double TexpTinsp = 1.30;
-
-        // ===== 7) МВЛ-таблица =====
-        // ВАЖНО: Pulmo-4 для «должной» МВЛ использует FEV1 с ОКРУГЛЕНИЕМ до 0.01
-        // (это позволяет получить 116.87 при Ж,30/172: round(3.335,2)=3.34; 3.34×35=116.9).
-        double fev1Rounded = Math.Round(FEV1, 2, MidpointRounding.AwayFromZero);
-        double mvvFactor = (sex == Sex.Female ? mvvFactorFemale : mvvFactorMale);
-        double mvvBtpsMultiplier = (mvvMode == MvvPredMode.Fev1TimesFactorTimesBtps) ? btpsAmb : 1.0;
-        double MVV = Math.Max(0.0, fev1Rounded) * mvvFactor * mvvBtpsMultiplier;
-
-        const double RR_mvl = 85.0;
-        double VT_mvl = 0.40 * VC;
-        const double RD_pct = 85.0;
-        double MVV_over_MOD = MVV / VE;
-
-        // ===== 8) Упаковка результата =====
-        var fvc = new PredictedFVC(
-            FVC_L: FVC,
-            IC_L: FVC, // В таблице ФЖЕЛ «ЕВд(л)» печатается как FVC
-            FEV1_L: FEV1,
-            FEV1_over_VC: FEV1_over_VC,
-            PEF_Lps: PEF,
-            OVnos_L: VT_rest,
-            FEF25_Lps: FEF25,
-            FEF50_Lps: FEF50,
-            FEF75_Lps: FEF75,
-            FEF25_75_Lps: FEF25_75,
-            FEF75_85_Lps: FEF75_85,
-            TFVC_s: 4.5
-        );
-
-        var zhel = new PredictedZhEL(
-            VC_L: VC,
-            IC_L: IC_rest,
-            VT_L: VT_rest,
-            IRV_L: IRV,
-            ERV_L: ERV
-            // VT_over_VC_pct: VTpct
-        );
-
-        var mod = new PredictedMOD(
-            // RR_perMin: RR_rest,
-            VE_Lpm: VE,
-            VT_L: VT_rest,
-            VO2_mlMin: VO2,
-            KNO2_mlL: KNO2
-            // Texp_over_Tinsp: TexpTinsp
-        );
-
-        var mvl = new PredictedMVL(
-            // RR_perMin: RR_mvl,
-            MVV_Lpm: MVV,
-            VT_L: VT_mvl,
-            RD_pct: RD_pct
-            // MVV_over_MOD: MVV_over_MOD
-        );
-
-        return new PredictedSet(fvc, zhel, mod, mvl);
-    }
 
     // --------------------------------------------------------------------------------
     public static PnpRecord ParseFile(string filePath,
@@ -397,8 +216,7 @@ public static class PnpParser
             mvl = new MvlBlock(rr, mvlLpm, vtL, rdPct, mvlOverMod);
         }
 
-        var predicted = Calculate(patient.AgeYears, patient.HeightM * 100, patient.Sex, btps.Factor);
-        return new PnpRecord(fileName, /*predicted,*/ patient, btps, zhel, mod, mvl, probes);
+        return new PnpRecord(fileName, patient, btps, zhel, mod, mvl, probes);
     }
 
     // ───── local: probe parser (static – avoids capturing ref structs) ───────────
@@ -606,34 +424,29 @@ public static class PnpParser
 
     private static BtpsInfo ExtractBtps(ReadOnlySpan<byte> src, double defaultFactor)
     {
-        /*for (int off = 0; off + 6 <= src.Length; off += 1) // шаг = 1 байт
+        for (var off = 0; off + 6 <= src.Length; off += 2)
         {
-            ushort t10 = BinaryPrimitives.ReadUInt16LittleEndian(src.Slice(off, 2));
-            ushort rh10= BinaryPrimitives.ReadUInt16LittleEndian(src.Slice(off+2, 2));
-            ushort p   = BinaryPrimitives.ReadUInt16LittleEndian(src.Slice(off+4, 2));
+            var t10 = BinaryPrimitives.ReadUInt16LittleEndian(src.Slice(off, 2)); // °C ×10
+            var rh10 = BinaryPrimitives.ReadUInt16LittleEndian(src.Slice(off + 2, 2)); // %RH ×10
+            var p = BinaryPrimitives.ReadUInt16LittleEndian(src.Slice(off + 4, 2)); // mmHg
 
-            bool plausible =
-                t10 is >= 100 and <= 400 &&
-                rh10 is >=   1 and <= 1000 &&     // ⟵ ИГНОРИРУЕМ RH==0
-                p    is >= 650 and <=  820;
-
+            var plausible = t10 is >= 150 and <= 350 && p is >= 650 and <= 820;
             if (!plausible) continue;
 
-            double T  = t10 / 10.0;
-            double RH = Math.Min(rh10 / 10.0, 100.0);
-            double P  = p;
+            var T = t10 / 10.0;
+            var RH = Math.Min(rh10 / 10.0, 100.0);
+            double P = p;
 
-            double factor = ComputeBtpsFactor(T, RH, P);
+            if (P <= 47.0) return new BtpsInfo(false, defaultFactor); // защита от деления на ~0
 
-            // sanity-фильтр для фантомов
-            if (factor < 1.02 || factor > 1.20) continue;
-
+            var factor = ComputeBtpsFactor(T, /*RH,*/ P);
             return new BtpsInfo(true, factor, T, RH, P);
-        }*/
+        }
+
         return new BtpsInfo(false, defaultFactor);
     }
 
-    private static double ComputeBtpsFactor(double tempC, double rhPct, double pressureMmHg)
+    /*private static double ComputeBtpsFactor(double tempC, double rhPct, double pressureMmHg)
     {
         // Формула Tetens для насыщенного пара, hPa
         var es_hPa = 6.1078 * Math.Pow(10.0, 7.5 * tempC / (237.3 + tempC));
@@ -646,7 +459,54 @@ public static class PnpParser
 
         return (pressureMmHg - ph2oAmb) / (pressureMmHg - Ph2oBody) *
                (kelvinBody / kelvinAmbient);
+    }*/
+
+    // Насыщенное давление пара воды при целой температуре T (°C), мм рт. ст.
+    // Таблица сгенерирована по формуле Buck (over water) и округлена до 2 знаков (AwayFromZero).
+    // Индекс: 0..60 °C. В UI используются 10..35 °C.
+    private static readonly double[] PH2O_MmHg_IntC = new double[] {
+        4.58, 4.93, 5.29, 5.69, 6.10, 6.54, 7.01, 7.51, 8.05, 8.61,
+        9.21, 9.85, 10.52, 11.23, 11.99, 12.79, 13.64, 14.53, 15.48, 16.48,
+        17.54, 18.66, 19.83, 21.08, 22.39, 23.77, 25.22, 26.75, 28.36, 30.06,
+        31.84, 33.72, 35.68, 37.75, 39.92, 42.20, 44.60, 47.10, 49.73, 52.49,
+        55.37, 58.39, 61.56, 64.87, 68.33, 71.95, 75.73, 79.69, 83.81, 88.13,
+        92.63, 97.32, 102.22, 107.33, 112.66, 118.21, 123.99, 130.01, 136.28, 142.81,
+        149.60
+    };
+
+    private static double SaturationVaporPressureMmHgAtC_Int(int tC)
+    {
+        if (tC < 0) tC = 0;
+        if (tC > 60) tC = 60;
+        return PH2O_MmHg_IntC[tC];
     }
 
+    /// <summary>
+    /// BTPS множитель «как в старой программе»:
+    /// BTPS = ((P - PH2O(T_saturated)) / (P - 47)) * (310 / (273 + T_int))
+    /// Где:
+    ///   - T_int — целая температура °C (усечение),
+    ///   - PH2O(T) — насыщенный пар при T_int из таблицы,
+    ///   - RH игнорируется.
+    /// </summary>
+    public static double ComputeBtpsFactor(double tempC, double pressureMmHg)
+    {
+        int tIntC = (int)tempC;          // усечение до целых градусов
+        if (tIntC < 10) tIntC = 10;      // UI 10..35 °C
+        if (tIntC > 35) tIntC = 35;
+
+        double pH2O_Amb = SaturationVaporPressureMmHgAtC_Int(tIntC);
+
+        const double PH2O_Body = 47.0;   // мм рт. ст. при 37°C
+        const double K_Body = 310.0;     // как в оригинале
+        double k_Amb = 273.0 + tIntC;    // без 0.15
+
+        if (pressureMmHg <= PH2O_Body) return 1.0;
+
+        double num = pressureMmHg - pH2O_Amb;
+        double den = pressureMmHg - PH2O_Body;
+        return (num / den) * (K_Body / k_Amb);
+    }
+    
     #endregion
 } // class PnpParser
