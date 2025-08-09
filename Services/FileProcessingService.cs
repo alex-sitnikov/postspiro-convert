@@ -103,7 +103,6 @@ public class FileProcessingService
         worksheet.Cell(row, col++).Value = "ДО МОД(л)";
         worksheet.Cell(row, col++).Value = "ПО2(мл/мин)";
         worksheet.Cell(row, col++).Value = "КИО2(мл/л)";
-        worksheet.Cell(row, col++).Value = "КИО2 вент.экв.(л/л)";
         worksheet.Cell(row, col++).Value = "Твыд/Твд";
         
         // Separator after MOD - next section is MVL
@@ -125,20 +124,17 @@ public class FileProcessingService
         for (int probeNum = 1; probeNum <= 3; probeNum++)
         {
             worksheet.Cell(row, col++).Value = $"Проба {probeNum} ФЖЕЛ(л)";
+            worksheet.Cell(row, col++).Value = $"Проба {probeNum} ЖЕЛвд(л)";
             worksheet.Cell(row, col++).Value = $"Проба {probeNum} ОФВ1(л)";
-            worksheet.Cell(row, col++).Value = $"Проба {probeNum} ЕВд ФЖЕЛ(л)";
+            worksheet.Cell(row, col++).Value = $"Проба {probeNum} ОФВ1/ЖЕЛ";
             worksheet.Cell(row, col++).Value = $"Проба {probeNum} ПОС(л/с)";
-            worksheet.Cell(row, col++).Value = $"Проба {probeNum} ОВнос(л)";
+            worksheet.Cell(row, col++).Value = $"Проба {probeNum} ОВпос(л)";
             worksheet.Cell(row, col++).Value = $"Проба {probeNum} МОС25(л/с)";
             worksheet.Cell(row, col++).Value = $"Проба {probeNum} МОС50(л/с)";
             worksheet.Cell(row, col++).Value = $"Проба {probeNum} МОС75(л/с)";
             worksheet.Cell(row, col++).Value = $"Проба {probeNum} СОС25-75(л/с)";
             worksheet.Cell(row, col++).Value = $"Проба {probeNum} СОС75-85(л/с)";
             worksheet.Cell(row, col++).Value = $"Проба {probeNum} Тфжел(с)";
-            worksheet.Cell(row, col++).Value = $"Проба {probeNum} ФЖЕЛ UI(л)";
-            worksheet.Cell(row, col++).Value = $"Проба {probeNum} ОФВ1 UI(л)";
-            worksheet.Cell(row, col++).Value = $"Проба {probeNum} ОВнос UI(л)";
-            worksheet.Cell(row, col++).Value = $"Проба {probeNum} ЕВд UI(л)";
             
             // Separator after each probe (except the last one)
             if (probeNum < 3)
@@ -235,14 +231,15 @@ public class FileProcessingService
                         worksheet.Cell(row, col++).Value = mod.GetProperty("respiratoryRate_perMin").GetDouble();
                         worksheet.Cell(row, col++).Value = mod.GetProperty("minuteVentilation_Lpm").GetDouble();
                         worksheet.Cell(row, col++).Value = mod.GetProperty("tidalVolume_L").GetDouble();
-                        worksheet.Cell(row, col++).Value = mod.GetProperty("oxygenUptake_mlMin").GetDouble();
-                        worksheet.Cell(row, col++).Value = mod.GetProperty("kio2_mlPerL").GetDouble();
+                        // Round ПО2(мл/мин) to closest integer
+                        worksheet.Cell(row, col++).Value = Math.Round(mod.GetProperty("oxygenUptake_mlMin").GetDouble());
+                        // Use КИО2 вент.экв.(л/л) value for КИО2(мл/л) column
                         worksheet.Cell(row, col++).Value = mod.GetProperty("kio2VentEq_LperL").GetDouble();
                         worksheet.Cell(row, col++).Value = mod.GetProperty("texpOverTinsp").GetDouble();
                     }
                     else
                     {
-                        col += 7;
+                        col += 6; // Updated from 7 to 6 since we removed one column
                     }
                     
                     // Skip separator column
@@ -275,26 +272,27 @@ public class FileProcessingService
                             if (probeIndex < probeArray.Length)
                             {
                                 var probe = probeArray[probeIndex];
-                                worksheet.Cell(row, col++).Value = probe.GetProperty("fvc_L").GetDouble();
-                                worksheet.Cell(row, col++).Value = probe.GetProperty("fev1_L").GetDouble();
-                                worksheet.Cell(row, col++).Value = probe.GetProperty("evd_L").GetDouble();
-                                worksheet.Cell(row, col++).Value = probe.GetProperty("pef_Lps").GetDouble();
-                                worksheet.Cell(row, col++).Value = probe.GetProperty("ovnos_L").GetDouble();
-                                worksheet.Cell(row, col++).Value = probe.GetProperty("mos25_Lps").GetDouble();
-                                worksheet.Cell(row, col++).Value = probe.GetProperty("mos50_Lps").GetDouble();
-                                worksheet.Cell(row, col++).Value = probe.GetProperty("mos75_Lps").GetDouble();
-                                worksheet.Cell(row, col++).Value = probe.GetProperty("sos25_75_Lps").GetDouble();
-                                worksheet.Cell(row, col++).Value = probe.GetProperty("sos75_85_Lps").GetDouble();
-                                worksheet.Cell(row, col++).Value = probe.GetProperty("tfvc_s").GetDouble();
-                                worksheet.Cell(row, col++).Value = probe.GetProperty("fvcUi_L").GetDouble();
-                                worksheet.Cell(row, col++).Value = probe.GetProperty("fev1Ui_L").GetDouble();
-                                worksheet.Cell(row, col++).Value = probe.GetProperty("ovnosUi_L").GetDouble();
-                                worksheet.Cell(row, col++).Value = probe.GetProperty("evdUi_L").GetDouble();
+                                var fvcUi = probe.GetProperty("fvcUi_L").GetDouble();
+                                var fev1Ui = probe.GetProperty("fev1Ui_L").GetDouble();
+                                
+                                // Column order: ФЖЕЛ(л), ЖЕЛвд(л), ОФВ1(л), ОФВ1/ЖЕЛ, ПОС(л/с), ОВпос(л), МОС25(л/с), МОС50(л/с), МОС75(л/с), СОС25-75(л/с), СОС75-85(л/с), Тфжел(с)
+                                worksheet.Cell(row, col++).Value = Math.Round(fvcUi, 2); // ФЖЕЛ(л) - use UI value, 2 decimals
+                                worksheet.Cell(row, col++).Value = Math.Round(probe.GetProperty("evdUi_L").GetDouble(), 2); // ЖЕЛвд(л) - use EvdUi value, 2 decimals
+                                worksheet.Cell(row, col++).Value = fev1Ui; // ОФВ1(л) - use UI value
+                                worksheet.Cell(row, col++).Value = fvcUi > 0 ? Math.Round(fev1Ui / fvcUi, 2) : 0; // ОФВ1/ЖЕЛ - calculate ratio, 2 decimals
+                                worksheet.Cell(row, col++).Value = probe.GetProperty("pef_Lps").GetDouble(); // ПОС(л/с)
+                                worksheet.Cell(row, col++).Value = probe.GetProperty("ovnosUi_L").GetDouble(); // ОВпос(л) - use UI value
+                                worksheet.Cell(row, col++).Value = probe.GetProperty("mos25_Lps").GetDouble(); // МОС25(л/с)
+                                worksheet.Cell(row, col++).Value = probe.GetProperty("mos50_Lps").GetDouble(); // МОС50(л/с)
+                                worksheet.Cell(row, col++).Value = probe.GetProperty("mos75_Lps").GetDouble(); // МОС75(л/с)
+                                worksheet.Cell(row, col++).Value = probe.GetProperty("sos25_75_Lps").GetDouble(); // СОС25-75(л/с)
+                                worksheet.Cell(row, col++).Value = probe.GetProperty("sos75_85_Lps").GetDouble(); // СОС75-85(л/с)
+                                worksheet.Cell(row, col++).Value = probe.GetProperty("tfvc_s").GetDouble(); // Тфжел(с)
                             }
                             else
                             {
-                                // Skip empty probe columns
-                                col += 15;
+                                // Skip empty probe columns (still 12 columns)
+                                col += 12;
                             }
                             
                             // Skip separator column between probes (except after the last one)
@@ -307,7 +305,7 @@ public class FileProcessingService
                     else
                     {
                         // Skip all probe columns if no probes (including separators)
-                        col += 47; // 15 columns × 3 probes + 2 separators
+                        col += 38; // 12 columns × 3 probes + 2 separators
                     }
                     
                     row++;

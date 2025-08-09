@@ -346,7 +346,7 @@ public static class PnpParser
                 values[2] * 1e-3,
                 values[3] * 1e-3,
                 values[4] * 1e-3,
-                values[0] > 0 ? 100.0 * values[2] / values[0] : double.NaN
+                values[1] > 0 ? 100.0 * values[2] / values[1] : double.NaN
             );
         }
 
@@ -606,25 +606,30 @@ public static class PnpParser
 
     private static BtpsInfo ExtractBtps(ReadOnlySpan<byte> src, double defaultFactor)
     {
-        for (var off = 0; off + 6 <= src.Length; off += 2)
+        /*for (int off = 0; off + 6 <= src.Length; off += 1) // шаг = 1 байт
         {
-            var t10 = BinaryPrimitives.ReadUInt16LittleEndian(src.Slice(off, 2)); // °C ×10
-            var rh10 = BinaryPrimitives.ReadUInt16LittleEndian(src.Slice(off + 2, 2)); // %RH ×10
-            var p = BinaryPrimitives.ReadUInt16LittleEndian(src.Slice(off + 4, 2)); // mmHg
+            ushort t10 = BinaryPrimitives.ReadUInt16LittleEndian(src.Slice(off, 2));
+            ushort rh10= BinaryPrimitives.ReadUInt16LittleEndian(src.Slice(off+2, 2));
+            ushort p   = BinaryPrimitives.ReadUInt16LittleEndian(src.Slice(off+4, 2));
 
-            var plausible = t10 is >= 150 and <= 350 && p is >= 650 and <= 820;
+            bool plausible =
+                t10 is >= 100 and <= 400 &&
+                rh10 is >=   1 and <= 1000 &&     // ⟵ ИГНОРИРУЕМ RH==0
+                p    is >= 650 and <=  820;
+
             if (!plausible) continue;
 
-            var T = t10 / 10.0;
-            var RH = Math.Min(rh10 / 10.0, 100.0);
-            double P = p;
+            double T  = t10 / 10.0;
+            double RH = Math.Min(rh10 / 10.0, 100.0);
+            double P  = p;
 
-            if (P <= 47.0) return new BtpsInfo(false, defaultFactor); // защита от деления на ~0
+            double factor = ComputeBtpsFactor(T, RH, P);
 
-            var factor = ComputeBtpsFactor(T, RH, P);
+            // sanity-фильтр для фантомов
+            if (factor < 1.02 || factor > 1.20) continue;
+
             return new BtpsInfo(true, factor, T, RH, P);
-        }
-
+        }*/
         return new BtpsInfo(false, defaultFactor);
     }
 
