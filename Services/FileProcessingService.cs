@@ -91,7 +91,7 @@ public class FileProcessingService
         worksheet.Cell(row, col++).Value = "ДО(л)";
         worksheet.Cell(row, col++).Value = "РОвд(л)";
         worksheet.Cell(row, col++).Value = "РОвыд(л)";
-        worksheet.Cell(row, col++).Value = "ДО/ЕВд(%)";
+        worksheet.Cell(row, col++).Value = "ДО/ЖЕЛ(%)";
         
         // Separator after ZhEL - next section is MOD
         separatorColumns.Add((col, " МОД "));

@@ -155,7 +155,7 @@ public static class PnpParser
         ParseFvcProbe(buffer, TagF3, 3, probes, btps);
 
         // 3) ZhEL block (resting vital capacity)
-        var zhelPos = buffer.IndexOf(TagZhel);
+        var zhelPos = buffer.LastIndexOf(TagZhel);
         if (zhelPos >= 0 && zhelPos + TagZhel.Length + 20 <= buffer.Length)
         {
             var values = ReadFloatArray(buffer.Slice(zhelPos + TagZhel.Length, 20));
@@ -165,7 +165,7 @@ public static class PnpParser
                 values[2] * 1e-3,
                 values[3] * 1e-3,
                 values[4] * 1e-3,
-                values[1] > 0 ? 100.0 * values[2] / values[1] : double.NaN
+                values[0] > 0 ? 100.0 * values[2] / values[0] : double.NaN
             );
         }
 
