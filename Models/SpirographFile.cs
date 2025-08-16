@@ -3,6 +3,12 @@ using System.Text.Json.Serialization;
 
 namespace SpiroUI.Models;
 
+public enum FileType
+{
+    PNP,
+    ZAK
+}
+
 public class SpirographFile
 {
     public string Name { get; set; } = string.Empty;
@@ -17,4 +23,5 @@ public class SpirographFile
     public ProcessingStatus Status { get; set; } = ProcessingStatus.Pending;
     public string? ErrorMessage { get; set; }
     public string? ParsedData { get; set; } // JSON string
+    public FileType FileType { get; set; } = FileType.PNP;
 }

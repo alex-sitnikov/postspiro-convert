@@ -1,63 +1,134 @@
 @page "/"
 @inject IJSRuntime JS
 @inject FileProcessingService FileService
+@using SpiroUI.Models
 
-<PageTitle>POSTSPIRO File Parser</PageTitle>
+<PageTitle>Medical File Parser</PageTitle>
 
 <div class="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50">
     <!-- Header -->
     <div class="container mx-auto px-4 py-8">
         <div class="text-center mb-12">
             <h1 class="text-5xl font-bold bg-gradient-to-r from-spiro-primary to-spiro-secondary bg-clip-text text-transparent mb-4">
-                POSTSPIRO File Parser
+                Medical File Parser
             </h1>
             <p class="text-gray-600 text-lg">
-                POSTSPIRO .pnp => .json converter
+                Parse medical files to structured data
             </p>
         </div>
 
-        <!-- Upload Area -->
-        <div class="max-w-4xl mx-auto">
-            <div @ondragenter="HandleDragEnter"
-                 @ondragleave="HandleDragLeave"
-                 @ondragover="HandleDragOver"
-                 @ondragover:preventDefault="true"
-                 @ondrop="HandleDrop"
-                 @ondrop:preventDefault="true"
-                 class="@GetDropZoneClass()">
-                
-                <div class="text-center">
-                    <svg class="mx-auto h-16 w-16 @(isDragging ? "text-spiro-primary animate-pulse" : "text-gray-400")" 
-                         stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
-                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" 
-                              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
-                    
-                    <p class="mt-4 text-lg text-gray-600">
-                        @if (isDragging)
-                        {
-                            <span class="text-spiro-primary font-semibold">Drop your files here!</span>
-                        }
-                        else
-                        {
-                            <span>Drag and drop your POSTSPIRO files here, or</span>
-                        }
-                    </p>
-                    
-                    <InputFile id="fileInput" OnChange="HandleFileSelected" multiple class="hidden" accept=".pnp" />
-                    <label for="fileInput" 
-                           class="mt-4 inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-gradient-to-r from-spiro-primary to-spiro-secondary hover:from-spiro-secondary hover:to-spiro-primary transition-all duration-200 cursor-pointer shadow-lg hover:shadow-xl transform hover:scale-105">
+        <!-- Tabs -->
+        <div class="max-w-4xl mx-auto mb-8">
+            <div class="border-b-2 border-gray-300 bg-gray-50 rounded-t-lg">
+                <nav class="-mb-0.5 flex space-x-2 p-2">
+                    <button @onclick="() => SetActiveTab(ParserTab.PNP)"
+                            class="@GetTabClass(ParserTab.PNP)">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
-                        Browse Files
-                    </label>
-                    
-                    <p class="mt-2 text-sm text-gray-500">
-                        Supports .pnp files
-                    </p>
-                </div>
+                        POSTSPIRO (.pnp)
+                    </button>
+                    <button @onclick="() => SetActiveTab(ParserTab.ZAK)"
+                            class="@GetTabClass(ParserTab.ZAK)">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        Rheography (.zak)
+                    </button>
+                </nav>
             </div>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="max-w-4xl mx-auto">
+            @if (activeTab == ParserTab.PNP)
+            {
+                <!-- PNP Upload Area -->
+                <div @ondragenter="HandleDragEnter"
+                     @ondragleave="HandleDragLeave"
+                     @ondragover="HandleDragOver"
+                     @ondragover:preventDefault="true"
+                     @ondrop="HandleDrop"
+                     @ondrop:preventDefault="true"
+                     class="@GetDropZoneClass()">
+                    
+                    <div class="text-center">
+                        <svg class="mx-auto h-16 w-16 @(isDragging ? "text-spiro-primary animate-pulse" : "text-gray-400")" 
+                             stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" 
+                                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        
+                        <p class="mt-4 text-lg text-gray-600">
+                            @if (isDragging)
+                            {
+                                <span class="text-spiro-primary font-semibold">Drop your files here!</span>
+                            }
+                            else
+                            {
+                                <span>Drag and drop your POSTSPIRO files here, or</span>
+                            }
+                        </p>
+                        
+                        <InputFile id="pnpFileInput" OnChange="HandlePnpFileSelected" multiple class="hidden" accept=".pnp" />
+                        <label for="pnpFileInput" 
+                               class="mt-4 inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-gradient-to-r from-spiro-primary to-spiro-secondary hover:from-spiro-secondary hover:to-spiro-primary transition-all duration-200 cursor-pointer shadow-lg hover:shadow-xl transform hover:scale-105">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            Browse Files
+                        </label>
+                        
+                        <p class="mt-2 text-sm text-gray-500">
+                            Supports .pnp files
+                        </p>
+                    </div>
+                </div>
+            }
+            else if (activeTab == ParserTab.ZAK)
+            {
+                <!-- ZAK Upload Area -->
+                <div @ondragenter="HandleDragEnter"
+                     @ondragleave="HandleDragLeave"
+                     @ondragover="HandleDragOver"
+                     @ondragover:preventDefault="true"
+                     @ondrop="HandleDrop"
+                     @ondrop:preventDefault="true"
+                     class="@GetDropZoneClass()">
+                    
+                    <div class="text-center">
+                        <svg class="mx-auto h-16 w-16 @(isDragging ? "text-spiro-primary animate-pulse" : "text-gray-400")" 
+                             stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" 
+                                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        
+                        <p class="mt-4 text-lg text-gray-600">
+                            @if (isDragging)
+                            {
+                                <span class="text-spiro-primary font-semibold">Drop your files here!</span>
+                            }
+                            else
+                            {
+                                <span>Drag and drop your rheography files here, or</span>
+                            }
+                        </p>
+                        
+                        <InputFile id="zakFileInput" OnChange="HandleZakFileSelected" multiple class="hidden" accept=".zak" />
+                        <label for="zakFileInput" 
+                               class="mt-4 inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-gradient-to-r from-spiro-primary to-spiro-secondary hover:from-spiro-secondary hover:to-spiro-primary transition-all duration-200 cursor-pointer shadow-lg hover:shadow-xl transform hover:scale-105">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            Browse Files
+                        </label>
+                        
+                        <p class="mt-2 text-sm text-gray-500">
+                            Supports .zak files
+                        </p>
+                    </div>
+                </div>
+            }
 
             <!-- File List -->
             @if (files.Any())
@@ -146,27 +217,59 @@
                 @if (files.Any(f => f.Status == ProcessingStatus.Completed))
                 {
                     <div class="mt-8 text-center">
-                        <button @onclick="DownloadExcel" 
-                                disabled="@isGeneratingZip"
-                                class="inline-flex items-center px-8 py-4 border border-transparent text-lg font-medium rounded-lg text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
-                            @if (isGeneratingZip)
+                        @if (activeTab == ParserTab.PNP)
+                        {
+                            <button @onclick="DownloadPnpExcel" 
+                                    disabled="@isGeneratingZip"
+                                    class="inline-flex items-center px-8 py-4 border border-transparent text-lg font-medium rounded-lg text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
+                                @if (isGeneratingZip)
+                                {
+                                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span>Generating Excel...</span>
+                                }
+                                else
+                                {
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    <span>Download Excel Report</span>
+                                }
+                            </button>
+                        }
+                        else if (activeTab == ParserTab.ZAK)
+                        {
+                            <button @onclick="DownloadZakExcel" 
+                                    disabled="@isGeneratingZip"
+                                    class="inline-flex items-center px-8 py-4 border border-transparent text-lg font-medium rounded-lg text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
+                                @if (isGeneratingZip)
+                                {
+                                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span>Generating Excel...</span>
+                                }
+                                else
+                                {
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    <span>Download Excel Report</span>
+                                }
+                            </button>
+                        }
+                        <p class="mt-2 text-sm text-gray-500">
+                            @if (activeTab == ParserTab.PNP)
                             {
-                                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                <span>Generating Excel...</span>
+                                <span>Combined report for @files.Count(f => f.Status == ProcessingStatus.Completed) files ready for download</span>
                             }
                             else
                             {
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                <span>Download Report</span>
+                                <span>Excel report for @files.Count(f => f.Status == ProcessingStatus.Completed) files ready for download</span>
                             }
-                        </button>
-                        <p class="mt-2 text-sm text-gray-500">
-                            Combined report for @files.Count(f => f.Status == ProcessingStatus.Completed) files ready for download
                         </p>
                     </div>
                 }
@@ -176,9 +279,16 @@
 </div>
 
 @code {
+    public enum ParserTab
+    {
+        PNP,
+        ZAK
+    }
+
     private List<SpirographFile> files = new();
     private bool isDragging = false;
     private bool isGeneratingZip = false;
+    private ParserTab activeTab = ParserTab.PNP;
 
     private void HandleDragEnter()
     {
@@ -195,13 +305,42 @@
         e.DataTransfer.DropEffect = "copy";
     }
 
-    private async Task HandleDrop(DragEventArgs e)
+    private void HandleDrop(DragEventArgs e)
     {
         isDragging = false;
         // File handling will be implemented with JS interop
     }
 
-    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    private void SetActiveTab(ParserTab tab)
+    {
+        if (activeTab != tab)
+        {
+            activeTab = tab;
+            files.Clear(); // Clear files when switching tabs
+        }
+    }
+
+    private string GetTabClass(ParserTab tab)
+    {
+        var baseClasses = "group inline-flex items-center px-6 py-4 border-b-2 font-semibold text-sm rounded-t-lg transition-all duration-200 cursor-pointer";
+        
+        if (activeTab == tab)
+            return $"{baseClasses} border-spiro-primary text-spiro-primary bg-white shadow-lg -mb-px relative z-10 ring-2 ring-spiro-primary ring-opacity-20";
+        
+        return $"{baseClasses} border-transparent text-gray-600 bg-gradient-to-b from-gray-100 to-gray-200 hover:text-spiro-primary hover:border-spiro-secondary hover:from-white hover:to-gray-50 hover:shadow-md transform hover:scale-105 shadow-sm";
+    }
+
+    private void HandlePnpFileSelected(InputFileChangeEventArgs e)
+    {
+        _ = HandleFileSelected(e, ParserTab.PNP);
+    }
+
+    private void HandleZakFileSelected(InputFileChangeEventArgs e)
+    {
+        _ = HandleFileSelected(e, ParserTab.ZAK);
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e, ParserTab fileType)
     {
         var uploadedFiles = e.GetMultipleFiles(100); // Allow up to 100 files
         
@@ -213,7 +352,8 @@
                 Name = file.Name,
                 Size = file.Size,
                 BrowserFile = file,
-                Status = ProcessingStatus.Pending
+                Status = ProcessingStatus.Pending,
+                FileType = fileType == ParserTab.PNP ? FileType.PNP : FileType.ZAK
             };
 
             files.Add(spirographFile);
@@ -259,8 +399,15 @@
             
             file.Content = ms.ToArray();
 
-            // Process with parser service
-            file.ParsedData = await FileService.ParseSpirographFile(file.Content, file.Name);
+            // Process with appropriate parser service based on file type
+            if (file.FileType == FileType.PNP)
+            {
+                file.ParsedData = await FileService.ParseSpirographFile(file.Content, file.Name);
+            }
+            else if (file.FileType == FileType.ZAK)
+            {
+                file.ParsedData = await FileService.ParseZakFile(file.Content, file.Name);
+            }
             
             // Clear the byte array after parsing to free memory
             file.Content = null;
@@ -285,7 +432,7 @@
         }
     }
 
-    private async Task DownloadExcel()
+    private async Task DownloadPnpExcel()
     {
         isGeneratingZip = true;
         StateHasChanged();
@@ -296,6 +443,25 @@
             var excelData = await FileService.GenerateExcelFile(completedFiles);
             
             await JS.InvokeVoidAsync("downloadFile", "spirograph-data.xlsx", Convert.ToBase64String(excelData));
+        }
+        finally
+        {
+            isGeneratingZip = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DownloadZakExcel()
+    {
+        isGeneratingZip = true;
+        StateHasChanged();
+
+        try
+        {
+            var completedFiles = files.Where(f => f.Status == ProcessingStatus.Completed).ToList();
+            var excelData = await FileService.GenerateZakExcelFile(completedFiles);
+            
+            await JS.InvokeVoidAsync("downloadFile", "rheography-data.xlsx", Convert.ToBase64String(excelData));
         }
         finally
         {
