@@ -544,28 +544,6 @@ public class FileProcessingService
         worksheet.Cell(1, col++).Value = "ЧСС мин (уд/мин)";
         worksheet.Cell(1, col++).Value = "ЧСС макс (уд/мин)";
         
-        // Conclusions separator
-        separatorColumns.Add((col, " Заключения "));
-        worksheet.Cell(1, col++).Value = " Заключения ";
-        
-        // Collect all unique conclusion keys
-        var allConclusionKeys = zakRecords
-            .Where(r => r.Conclusion != null)
-            .SelectMany(r => r.Conclusion)
-            .Where(c => c != null)
-            .Select(c => c.Key)
-            .Distinct()
-            .OrderBy(k => k)
-            .ToList();
-            
-        // Add conclusion columns
-        foreach (var key in allConclusionKeys)
-        {
-            worksheet.Cell(1, col++).Value = $"{key} - Значение";
-            worksheet.Cell(1, col++).Value = $"{key} - Примечание";
-            worksheet.Cell(1, col++).Value = $"{key} - Отклонение (%)";
-            worksheet.Cell(1, col++).Value = $"{key} - Направление";
-        }
 
         // Style the header row
         var headerRange = worksheet.Range(1, 1, 1, col - 1);
@@ -674,20 +652,6 @@ public class FileProcessingService
                 worksheet.Cell(row, col).Value = record.Extra.HeartRateHigh.Value;
             col++;
             
-            // Skip conclusions separator
-            col++;
-            
-            // Conclusions
-            foreach (var key in allConclusionKeys)
-            {
-                var conclusion = record.Conclusion?.FirstOrDefault(c => c.Key == key);
-                worksheet.Cell(row, col++).Value = conclusion?.Value ?? "";
-                worksheet.Cell(row, col++).Value = conclusion?.Note ?? "";
-                if (conclusion?.DeltaPercent.HasValue == true)
-                    worksheet.Cell(row, col).Value = Math.Round(conclusion.DeltaPercent.Value, 3);
-                col++;
-                worksheet.Cell(row, col++).Value = conclusion?.DeltaDirection ?? "";
-            }
             
             row++;
         }

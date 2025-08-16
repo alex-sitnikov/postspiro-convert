@@ -620,10 +620,12 @@ namespace SpiroUI.Services
             }
 
             string? qual = null, domCode = null, domSide = null;
-            // Качественная асимметрия кровенаполнения + доминирование S>D/D>S (учитываем "в ПРЕДЕЛАХ НОРМЫ")
+            
+            // Качественная асимметрия кровенаполнения + доминирование S>D / S<D (учёт кириллицы С/Д)
+            // Разрешаем любые слова перед "…асимметр…кровенаполнени…"
             var mQual = Regex.Match(
                 text,
-                @"(Асимметр[^\n()]*кровенаполнени[^\n()]*)\s*\(\s*([SDСД])\s*>\s*([SDСД])\s*\)",
+                @"([^\n()]*асимметр[^\n()]*кровенаполнени[^\n()]*)\s*\(\s*([SDСД])\s*([<>])\s*([SDСД])\s*\)",
                 RegexOptions.IgnoreCase
             );
             if (mQual.Success)
@@ -640,11 +642,14 @@ namespace SpiroUI.Services
                 }
 
                 var leftC  = MapSD(mQual.Groups[2].Value);
-                var rightC = MapSD(mQual.Groups[3].Value);
-                domCode = $"{leftC}>{rightC}";
-                domSide = leftC == "S" ? "Left" : leftC == "D" ? "Right" : null;
-            }
+                var op     = mQual.Groups[3].Value;  // ">" или "<"
+                var rightC = MapSD(mQual.Groups[4].Value);
 
+                domCode = $"{leftC}{op}{rightC}";
+                domSide = op == ">" ? (leftC == "S" ? "Left" : "Right")
+                    : (leftC == "S" ? "Right" : "Left");
+            }
+            
             int? bpm = null, lo = null, hi = null;
             var mHr = Regex.Match(text,
                 @"Частота\s+сердечных\s+сокращени[йя]\s*[:=]\s*(\d+)\s*(?:\((\d+)\s*[-–—]\s*(\d+)\))?\s*(?:в\s*мин\.?|уд/мин|bpm)?",
